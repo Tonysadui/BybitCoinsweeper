@@ -1,4 +1,9 @@
-import os, json, time, requests, crayons, sys
+import os
+import json
+import time
+import requests
+import crayons
+import sys
 from datetime import datetime
 import urllib.parse
 
@@ -13,7 +18,6 @@ def print_banner():
     print(crayons.blue(' ███ ███  ██ ██   ████ ███████ ██   ████ ██ ██      '))
     print()
     print("Join our Telegram channel: https://t.me/winsnip")
-
 
 class ByBit:
     def __init__(self):
@@ -65,6 +69,7 @@ class ByBit:
 
         try:
             response = self.session.post(url, json=payload, headers=self.headers)
+            response.raise_for_status()  # Поднимает исключение для плохих ответов
             if response.status_code == 201:
                 data = response.json()
                 self.headers['Authorization'] = f"Bearer {data['accessToken']}"
@@ -75,9 +80,11 @@ class ByBit:
                     "userId": data['id']
                 }
             else:
-                return {"success": False, "error": "Unexpected status code"}
-        except requests.RequestException as error:
-            return {"success": False, "error": str(error)}
+                return {"success": False, "error": f"Unexpected status code: {response.status_code}"}
+        except requests.exceptions.HTTPError as http_err:
+            return {"success": False, "error": f"HTTP error occurred: {http_err}"}
+        except Exception as err:
+            return {"success": False, "error": f"Other error occurred: {err}"}
 
     def score(self):
         for i in range(3):
@@ -97,9 +104,9 @@ class ByBit:
 
                 if res.status_code == 200:
                     self.info["score"] += score
-                    self.log(f"Game Played Successfully: received {score} points | Total: {self.info['score']}","SUCCESS")
+                    self.log(f"Game Played Successfully: received {score} points | Total: {self.info['score']}", "SUCCESS")
                 elif res.status_code == 401:
-                    self.log('Token expired, need to self.log in again', "ERROR")
+                    self.log('Token expired, need to log in again', "ERROR")
                     return False
                 else:
                     self.log(f"An Error Occurred With Code {res.status_code}", 'ERROR')
@@ -124,18 +131,18 @@ class ByBit:
                 if proxy:
                     self.session.proxies.update({'http': proxy, 'https': proxy})
                 decoded = url_decode(init_data)
-                finaldat = (url_decode(decoded))
+                finaldat = url_decode(decoded)
                 user_data = json.loads(finaldat.split('user=')[1].split('&')[0])
                 self.log(f"========== Account {i + 1} | {user_data['first_name']} ==========", 'INFO')
-                self.log(f"self.logging into account {user_data['id']}...", 'INFO')
+                self.log(f"Logging into account {user_data['id']}...", 'INFO')
                 login_result = self.login(user_data)
                 if login_result["success"]:
-                    self.log('login successful!', "SUCCESS")
+                    self.log('Login successful!', "SUCCESS")
                     game_result = self.score()
                     if not game_result:
-                        self.log('Need to self.log in again, moving to the next account', 'WARNING')
+                        self.log('Need to log in again, moving to the next account', 'WARNING')
                 else:
-                    self.log(f"login failed! {login_result['error']}", 'ERROR')
+                    self.log(f"Login failed! {login_result['error']}", 'ERROR')
 
                 if i < len(data) - 1:
                     self.wait(3)
@@ -149,3 +156,4 @@ if __name__ == '__main__':
     except Exception as err:
         print(str(err))
         sys.exit(1)
+                
